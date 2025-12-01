@@ -1,0 +1,7 @@
+{
+  "name": "LinguistAI - Smart Translation Platform",
+  "description": "Advanced AI translation tool supporting Nepalese and Sinhala with document processing, voice capabilities, and analytics.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

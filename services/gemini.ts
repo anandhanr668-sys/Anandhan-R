@@ -49,9 +49,14 @@ export const translateDocumentContent = async (
   targetLang: string
 ): Promise<string> => {
   try {
-    // Similar to translateText but potentially handling larger contexts or different prompting
     const model = 'gemini-2.5-flash';
-    const prompt = `Translate the following document content from ${sourceLang} to ${targetLang}. 
+    
+    // Determine source language instruction
+    const sourceInstruction = (sourceLang === 'auto' || sourceLang === 'Detect Language')
+      ? "Detect the source language automatically" 
+      : `from ${sourceLang}`;
+
+    const prompt = `Translate the following document content ${sourceInstruction} to ${targetLang}. 
     Maintain the original structure/paragraphs as much as possible.
     
     Document Content:
@@ -67,7 +72,7 @@ export const translateDocumentContent = async (
     saveTranslation({
       sourceText: content.substring(0, 100) + "...", // truncate for storage
       translatedText: translatedText.substring(0, 100) + "...",
-      sourceLang,
+      sourceLang: sourceLang === 'auto' ? 'Auto' : sourceLang,
       targetLang,
       type: 'document'
     });

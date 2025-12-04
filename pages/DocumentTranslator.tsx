@@ -1,28 +1,49 @@
 import React, { useState } from 'react';
 import { LANGUAGES } from '../types';
 import { translateDocumentContent } from '../services/gemini';
-import { Upload, FileText, Download, Loader2, File } from 'lucide-react';
+import { Upload, FileText, Download, Loader2, File, CheckCircle } from 'lucide-react';
+
+const MAX_FILE_SIZE = 1024 * 1024; // 1MB limit for text files (approx 1 million chars)
 
 export default function DocumentTranslator() {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState('');
   const [translatedContent, setTranslatedContent] = useState('');
-  const [sourceLang, setSourceLang] = useState('en');
+  const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('ne');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        alert(`File is too large (${formatFileSize(selectedFile.size)}). Max allowed size is 1MB for text files.`);
+        e.target.value = ''; // Reset input
+        return;
+      }
+
       setFile(selectedFile);
       setTranslatedContent('');
       
       // Simple text extraction for .txt, .md, .csv
-      if (selectedFile.type === 'text/plain' || selectedFile.name.endsWith('.md') || selectedFile.name.endsWith('.txt')) {
-        const text = await selectedFile.text();
-        setContent(text);
+      if (selectedFile.type === 'text/plain' || selectedFile.name.endsWith('.md') || selectedFile.name.endsWith('.txt') || selectedFile.name.endsWith('.csv')) {
+        try {
+            const text = await selectedFile.text();
+            setContent(text);
+        } catch (err) {
+            alert("Failed to read file content.");
+        }
       } else {
-        setContent(`[Binary file ${selectedFile.name} loaded. Please use .txt or .md files for this demo.]`);
+        setContent(`[Binary file ${selectedFile.name} loaded. Text extraction may not work perfectly. Please use .txt or .md files.]`);
       }
     }
   };
@@ -31,13 +52,16 @@ export default function DocumentTranslator() {
     if (!content) return;
     setIsProcessing(true);
     try {
-        const sLangName = LANGUAGES.find(l => l.code === sourceLang)?.name || sourceLang;
+        const sLangName = sourceLang === 'auto' 
+          ? 'auto' 
+          : LANGUAGES.find(l => l.code === sourceLang)?.name || sourceLang;
+        
         const tLangName = LANGUAGES.find(l => l.code === targetLang)?.name || targetLang;
         
         const result = await translateDocumentContent(content, sLangName, tLangName);
         setTranslatedContent(result);
     } catch (e) {
-        alert("Error translating document");
+        alert("Error translating document. Please check your network or API key.");
     } finally {
         setIsProcessing(false);
     }
@@ -74,6 +98,7 @@ export default function DocumentTranslator() {
                   onChange={(e) => setSourceLang(e.target.value)}
                   className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                 >
+                  <option value="auto">✨ Detect Language</option>
                   {LANGUAGES.map((lang) => (
                     <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>
                   ))}
@@ -100,11 +125,21 @@ export default function DocumentTranslator() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-10 h-10 mb-3 text-gray-400" />
-                    <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">TXT, MD (PDF/DOC soon)</p>
+            <label className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${file ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}>
+                <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
+                    {file ? (
+                      <>
+                        <CheckCircle className="w-10 h-10 mb-3 text-primary-600" />
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-full">{file.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatFileSize(file.size)}</p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-10 h-10 mb-3 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">TXT, MD, CSV (Max 1MB)</p>
+                      </>
+                    )}
                 </div>
                 <input type="file" className="hidden" onChange={handleFileChange} accept=".txt,.md,.csv" />
             </label>
@@ -116,7 +151,7 @@ export default function DocumentTranslator() {
                 disabled={isProcessing}
                 className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg shadow-md transition-colors disabled:opacity-50 flex justify-center items-center"
             >
-                {isProcessing ? <><Loader2 className="animate-spin mr-2"/> Processing</> : 'Translate Document'}
+                {isProcessing ? <><Loader2 className="animate-spin mr-2"/> Translating...</> : 'Translate Document'}
             </button>
           )}
         </div>

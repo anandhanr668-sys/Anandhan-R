@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LANGUAGES } from '../types';
-import { translateDocumentContent } from '../services/gemini';
-import { Upload, FileText, Download, Loader2, File, CheckCircle } from 'lucide-react';
+import { translateDocumentContent, refineText } from '../services/gemini';
+import { Upload, FileText, Download, Loader2, File, CheckCircle, Sparkles } from 'lucide-react';
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB limit for text files (approx 1 million chars)
 
@@ -12,6 +12,7 @@ export default function DocumentTranslator() {
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('ne');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -64,6 +65,19 @@ export default function DocumentTranslator() {
         alert("Error translating document. Please check your network or API key.");
     } finally {
         setIsProcessing(false);
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!translatedContent) return;
+    setIsSummarizing(true);
+    try {
+      const summary = await refineText(translatedContent, 'summarize');
+      setTranslatedContent(prev => `--- SUMMARY ---\n${summary}\n\n--- FULL TEXT ---\n${prev}`);
+    } catch (e) {
+      alert("Failed to summarize document.");
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -165,21 +179,34 @@ export default function DocumentTranslator() {
                         {file ? file.name : 'No document selected'}
                     </span>
                 </div>
-                {translatedContent && (
-                    <button 
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                        <Download size={16} /> Download Translated
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {translatedContent && (
+                        <>
+                          <button 
+                            onClick={handleSummarize}
+                            disabled={isSummarizing}
+                            className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium px-3 py-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors"
+                          >
+                             {isSummarizing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} 
+                             Summarize
+                          </button>
+                          <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                          <button 
+                              onClick={handleDownload}
+                              className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium px-3 py-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md transition-colors"
+                          >
+                              <Download size={16} /> Download
+                          </button>
+                        </>
+                    )}
+                </div>
             </div>
             
             <div className="flex-1 p-6 font-mono text-sm overflow-auto">
-                {isProcessing ? (
+                {isProcessing || isSummarizing ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400">
                         <Loader2 className="w-12 h-12 animate-spin mb-4 text-primary-500" />
-                        <p>Analyzing and translating document...</p>
+                        <p>{isSummarizing ? "Generating AI Summary..." : "Analyzing and translating document..."}</p>
                     </div>
                 ) : translatedContent ? (
                     <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-300">

@@ -1,15 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { getAnalytics } from '../services/storage';
+import { generateAnalyticsInsights } from '../services/gemini';
 import { AnalyticsData } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Activity, Globe, Users, TrendingUp } from 'lucide-react';
+import { Activity, Globe, Users, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [insights, setInsights] = useState<string>('');
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   useEffect(() => {
     setData(getAnalytics());
   }, []);
+
+  const handleGenerateInsights = async () => {
+    if (!data) return;
+    setLoadingInsights(true);
+    const result = await generateAnalyticsInsights(data);
+    setInsights(result);
+    setLoadingInsights(false);
+  };
 
   if (!data) return <div>Loading...</div>;
 
@@ -17,10 +28,40 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Analytics Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400">Platform usage statistics and insights.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Analytics Dashboard</h1>
+            <p className="text-gray-500 dark:text-gray-400">Platform usage statistics and insights.</p>
+        </div>
+        <button 
+            onClick={handleGenerateInsights}
+            disabled={loadingInsights}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-70"
+        >
+            {loadingInsights ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+            {insights ? 'Refresh Insights' : 'Ask AI for Insights'}
+        </button>
       </div>
+      
+      {/* AI Insights Panel */}
+      {(insights || loadingInsights) && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800 p-6 rounded-xl shadow-sm">
+            <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-100 mb-3 flex items-center">
+                <Sparkles size={18} className="mr-2 text-indigo-600 dark:text-indigo-400" />
+                Gemini Intelligence Report
+            </h3>
+            <div className="prose dark:prose-invert max-w-none text-indigo-900/80 dark:text-indigo-100/80 text-sm">
+                {loadingInsights ? (
+                    <div className="flex items-center space-x-2 animate-pulse">
+                        <div className="h-2 w-24 bg-indigo-300 rounded"></div>
+                        <div className="h-2 w-32 bg-indigo-300 rounded"></div>
+                    </div>
+                ) : (
+                    <div className="whitespace-pre-line">{insights}</div>
+                )}
+            </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

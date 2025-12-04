@@ -85,6 +85,60 @@ export const translateDocumentContent = async (
   }
 };
 
+export const refineText = async (
+  text: string,
+  type: 'summarize' | 'polish' | 'formal' | 'casual'
+): Promise<string> => {
+  try {
+    // Using Flash for fast editing tasks
+    const model = 'gemini-2.5-flash';
+    let prompt = "";
+    
+    switch (type) {
+        case 'summarize': 
+          prompt = "Summarize the following text concisely in the same language as the text:"; 
+          break;
+        case 'polish': 
+          prompt = "Polish the following text to improve fluency, grammar, and vocabulary, keeping the meaning intact. Return only the polished text:"; 
+          break;
+        case 'formal': 
+          prompt = "Rewrite the following text to be more formal and professional. Return only the rewritten text:"; 
+          break;
+        case 'casual': 
+          prompt = "Rewrite the following text to be more casual and conversational. Return only the rewritten text:"; 
+          break;
+    }
+    
+    const response = await ai.models.generateContent({
+      model,
+      contents: `${prompt}\n\n"${text}"`
+    });
+    return response.text?.trim() || text;
+  } catch (error) {
+    console.error("Refine error:", error);
+    throw new Error("Failed to refine text.");
+  }
+};
+
+export const generateAnalyticsInsights = async (data: any): Promise<string> => {
+    try {
+        // Using Pro for complex reasoning and analysis
+        const model = 'gemini-3-pro-preview';
+        const prompt = `Analyze the following translation app usage data and provide 3 short, actionable strategic insights or interesting trends. Format the output as a simple list.
+        
+        Data: ${JSON.stringify(data)}`;
+
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt
+        });
+        return response.text?.trim() || "No insights available.";
+    } catch (error) {
+        console.error("Insights error:", error);
+        return "Could not generate insights at this time.";
+    }
+};
+
 export const transcribeAudio = async (
   audioBase64: string,
   mimeType: string = "audio/webm"

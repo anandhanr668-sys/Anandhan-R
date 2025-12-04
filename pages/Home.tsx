@@ -7,7 +7,10 @@ export default function Home() {
   const [sourceLang, setSourceLang] = useState('ne');
   const [targetLang, setTargetLang] = useState('en');
   const [inputText, setInputText] = useState('');
+  
+  // Output States
   const [outputText, setOutputText] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -28,11 +31,12 @@ export default function Home() {
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
     setIsLoading(true);
+    
     try {
-      const result = await translateText(inputText, 
-        LANGUAGES.find(l => l.code === sourceLang)?.name || sourceLang, 
-        LANGUAGES.find(l => l.code === targetLang)?.name || targetLang
-      );
+      const sName = LANGUAGES.find(l => l.code === sourceLang)?.name || sourceLang;
+      const tName = LANGUAGES.find(l => l.code === targetLang)?.name || targetLang;
+
+      const result = await translateText(inputText, sName, tName);
       setOutputText(result);
     } catch (error) {
       alert("Translation failed. Please check your API Key configuration.");
@@ -206,25 +210,28 @@ export default function Home() {
           </div>
 
           {/* Target */}
-          <div className="relative p-6 flex flex-col h-full bg-gray-50/50 dark:bg-gray-900/50">
-             {isLoading || isRefining ? (
-               <div className="flex-1 flex flex-col items-center justify-center text-primary-600">
-                 <Loader2 className="animate-spin mb-2 w-8 h-8" /> 
-                 <p>{isListening ? "Listening..." : isRefining ? "Refining with AI..." : "Processing..."}</p>
-               </div>
-             ) : (
-                <textarea
-                  readOnly
-                  value={outputText}
-                  placeholder="Translation will appear here"
-                  className="flex-1 w-full resize-none border-none focus:ring-0 bg-transparent text-lg text-gray-800 dark:text-gray-100 placeholder-gray-400"
-                />
-             )}
+          <div className="relative p-0 flex flex-col h-full bg-gray-50/50 dark:bg-gray-900/50">
+             
+             <div className="flex-1 relative p-6">
+                {isLoading || isRefining ? (
+                <div className="flex-1 h-full flex flex-col items-center justify-center text-primary-600">
+                    <Loader2 className="animate-spin mb-2 w-8 h-8" /> 
+                    <p>{isListening ? "Listening..." : isRefining ? "Refining with AI..." : "Processing..."}</p>
+                </div>
+                ) : (
+                    <textarea
+                    readOnly
+                    value={outputText}
+                    placeholder="Translation will appear here"
+                    className="flex-1 w-full h-full resize-none border-none focus:ring-0 bg-transparent text-lg text-gray-800 dark:text-gray-100 placeholder-gray-400"
+                    />
+                )}
+             </div>
              
              {outputText && !isLoading && !isRefining && (
-               <>
+               <div className="p-4 pt-0">
                 {/* AI Tools */}
-                <div className="absolute bottom-16 left-6 right-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
                     <button onClick={() => handleRefine('polish')} className="flex items-center px-3 py-1.5 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 rounded-lg text-xs font-medium hover:bg-purple-50 dark:hover:bg-purple-900/30 whitespace-nowrap shadow-sm">
                       <Sparkles size={14} className="mr-1.5" /> Polish
                     </button>
@@ -240,24 +247,24 @@ export default function Home() {
                 </div>
 
                 {/* Standard Actions */}
-                <div className="absolute bottom-4 left-6 flex gap-2">
+                <div className="flex gap-2">
                     <button 
                     onClick={handleSpeak}
                     disabled={isSpeaking}
-                    className="p-3 rounded-full bg-white dark:bg-gray-800 text-primary-600 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-full bg-white dark:bg-gray-800 text-primary-600 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                     title="Listen"
                     >
                     <Volume2 size={20} className={isSpeaking ? "animate-pulse" : ""} />
                     </button>
                     <button 
                     onClick={handleCopy}
-                    className="p-3 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="p-2 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     title="Copy"
                     >
                     {isCopied ? <Check size={20} className="text-green-500" /> : <Copy size={20} />}
                     </button>
                 </div>
-               </>
+               </div>
              )}
           </div>
         </div>

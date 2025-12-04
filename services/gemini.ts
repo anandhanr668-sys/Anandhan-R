@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { saveTranslation } from "./storage";
 
 // Initialize Gemini Client
@@ -83,6 +83,49 @@ export const translateDocumentContent = async (
     console.error("Document translation error:", error);
     throw new Error("Failed to translate document.");
   }
+};
+
+export const translateBinaryFile = async (
+    base64Data: string,
+    mimeType: string,
+    targetLang: string
+): Promise<string> => {
+    try {
+        // Gemini 2.5 Flash supports PDF, Images, etc.
+        const model = 'gemini-2.5-flash';
+        
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            data: base64Data,
+                            mimeType: mimeType
+                        }
+                    },
+                    {
+                        text: `Analyze this document/image. Extract all text and translate it to ${targetLang}. Preserve the original layout, formatting, and structure as much as possible. Return only the translated content.`
+                    }
+                ]
+            }
+        });
+
+        const text = response.text?.trim() || "";
+        
+        saveTranslation({
+            sourceText: "[File Content]",
+            translatedText: text.substring(0, 100) + "...",
+            sourceLang: 'Auto',
+            targetLang,
+            type: 'document'
+        });
+
+        return text;
+    } catch (error) {
+        console.error("File translation error", error);
+        throw error;
+    }
 };
 
 export const refineText = async (
